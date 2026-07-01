@@ -3,9 +3,9 @@ name: Build and Deploy Hexo to GitHub Pages
 on:
   push:
     branches:
-      - main   # 如果你的默认分支是 master，改成 master
-  workflow_dispatch:
-  
+      - main   # 正式分支
+  workflow_dispatch:   # 支持在 Actions 页面手动点击运行
+
 permissions:
   contents: read
   pages: write
@@ -30,6 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Update Hexo core to latest
+        run: npm install hexo@latest hexo-cli@latest
 
       - name: Build site
         run: npx hexo generate
