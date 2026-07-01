@@ -1,0 +1,86 @@
+name: Install Hexo Theme
+
+on:
+  workflow_dispatch:
+    inputs:
+      theme:
+        description: '选择主题（选 custom 需要同时填下面两项）'
+        required: true
+        default: 'butterfly'
+        type: choice
+        options:
+          - next
+          - butterfly
+          - fluid
+          - icarus
+          - custom
+      custom_repo:
+        description: '[仅 custom] 主题的 git 仓库地址'
+        required: false
+        default: ''
+      custom_name:
+        description: '[仅 custom] 主题名称（会作为 themes/ 下的目录名，以及 _config.yml 里的 theme 字段）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  install-theme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 确定主题仓库和名称
+        id: theme
+        run: |
+          case "${{ github.event.inputs.theme }}" in
+            next)
+              echo "repo=https://github.com/next-theme/hexo-theme-next.git" >> "$GITHUB_OUTPUT"
+              echo "name=next" >> "$GITHUB_OUTPUT"
+              ;;
+            butterfly)
+              echo "repo=https://github.com/jerryc127/hexo-theme-butterfly.git" >> "$GITHUB_OUTPUT"
+              echo "name=butterfly" >> "$GITHUB_OUTPUT"
+              ;;
+            fluid)
+              echo "repo=https://github.com/fluid-dev/hexo-theme-fluid.git" >> "$GITHUB_OUTPUT"
+              echo "name=fluid" >> "$GITHUB_OUTPUT"
+              ;;
+            icarus)
+              echo "repo=https://github.com/ppoffice/hexo-theme-icarus.git" >> "$GITHUB_OUTPUT"
+              echo "name=icarus" >> "$GITHUB_OUTPUT"
+              ;;
+            custom)
+              if [ -z "${{ github.event.inputs.custom_repo }}" ] || [ -z "${{ github.event.inputs.custom_name }}" ]; then
+                echo "选择 custom 时必须同时填写 custom_repo 和 custom_name" >&2
+                exit 1
+              fi
+              echo "repo=${{ github.event.inputs.custom_repo }}" >> "$GITHUB_OUTPUT"
+              echo "name=${{ github.event.inputs.custom_name }}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: 下载主题到 themes/ 目录
+        run: |
+          rm -rf "themes/${{ steps.theme.outputs.name }}"
+          git clone --depth 1 "${{ steps.theme.outputs.repo }}" "themes/${{ steps.theme.outputs.name }}"
+          rm -rf "themes/${{ steps.theme.outputs.name }}/.git"
+
+      - name: 应用主题（修改 _config.yml 的 theme 字段）
+        run: |
+          if grep -qE '^theme:' _config.yml; then
+            sed -i "s/^theme:.*/theme: ${{ steps.theme.outputs.name }}/" _config.yml
+          else
+            echo "theme: ${{ steps.theme.outputs.name }}" >> _config.yml
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: install ${{ steps.theme.outputs.name }} theme"
+          git push
