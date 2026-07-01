@@ -56,11 +56,8 @@ jobs:
             fi
           fi
 
-      - name: Install theme package
-        run: npm install ${{ inputs.theme_package }} --save
-
-      - name: Install pug & stylus renderers (大多数主题需要)
-        run: npm install hexo-renderer-pug hexo-renderer-stylus --save
+      - name: Install theme package (始终拉取最新版本)
+        run: npm install ${{ inputs.theme_package }}@latest --save
 
       - name: Apply theme in _config.yml
         run: |
